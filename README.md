@@ -15,7 +15,7 @@ Browse 16 houseplants and tap any one to learn care tips, light needs, and fun f
 Just open `index.html` in any browser. No build step or dependencies needed.
 
 ## Live Demo
-
+https://pick-your-plants.vercel.app/
 
 ## Tech
 - HTML5, CSS3, Vanilla JavaScript
