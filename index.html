@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pick Your Plants</title>
+  <!-- Preload both background images so they're ready instantly -->
+  <link rel="preload" as="image" href="bg.png">
+  <link rel="preload" as="image" href="bg2.png">
+  <link href="https://fonts.googleapis.com/css2?family=Lobster+Two:ital,wght@0,400;0,700;1,400;1,700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --purple: #9B6BC8;
+      --purple-dark: #7A4FA8;
+      --purple-bg: #C8A8E9;
+      --cream: #FFF8EE;
+      --green: #2ecc71;
+      --green-dark: #27ae60;
+      --text: #3a2a1a;
+      --card-bg: #FFF5E6;
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.97);
+    }
+    .screen.visible {
+      opacity: 1;
+      pointer-events: all;
+      transform: scale(1);
+    }
+
+    /* ── LANDING ── */
+    #screen-landing {
+      background-color: #95B07F; /* fallback shown instantly while bg.png loads */
+      background-image: url('bg.png');
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #screen-landing::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(40, 80, 20, 0.25);
+    }
+    .landing-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+    }
+    .title-banner {
+      background: linear-gradient(to right, #ACA9F4, #853E58);
+      padding: 14px 40px;
+      clip-path: polygon(0% 0%, 97% 0%, 100% 50%, 97% 100%, 0% 100%, 3% 50%);
+      transform: rotate(-1deg);
+    }
+    .title-banner h1 {
+      font-family: 'Lobster Two', cursive;
+      font-size: clamp(2rem, 6vw, 3.2rem);
+      color: white;
+      letter-spacing: 1px;
+    }
+    .start-btn {
+      padding: 14px 44px;
+      font-size: clamp(1rem, 3vw, 1.3rem);
+      font-family: 'Nunito', sans-serif;
+      font-weight: 700;
+      border: none;
+      border-radius: 50px;
+      background: linear-gradient(to right, #83A4A3, #458464);
+      color: white;
+      cursor: pointer;
+      transition: filter 0.2s, transform 0.1s;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+    .start-btn:hover { filter: brightness(0.88); transform: translateY(-2px); }
+    .start-btn:active { transform: translateY(0); }
+
+    /* ── PICKER ── */
+    #screen-picker {
+      background-color: #3a6b2a; /* fallback for bg2.png */
+      background-image: url('bg2.png');
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 16px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .picker-title {
+      font-family: 'Lobster Two', cursive;
+      font-size: clamp(1.4rem, 4vw, 2.2rem);
+      color: white;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .picker-header {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 16px;
+      gap: 10px;
+    }
+    .picker-back-btn {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.5);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .picker-back-btn:hover { background: rgba(255,255,255,0.35); }
+
+    .plant-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      max-width: 900px;
+      width: 100%;
+      border-top: 1px solid rgba(255,255,255,0.5);
+      border-left: 1px solid rgba(255,255,255,0.5);
+    }
+
+    /* Tablet: 3 columns */
+    @media (max-width: 700px) {
+      .plant-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    /* Mobile: 2 columns */
+    @media (max-width: 480px) {
+      .plant-grid { grid-template-columns: repeat(2, 1fr); }
+      #screen-picker { padding: 14px 10px; }
+      .picker-header { margin-bottom: 12px; }
+    }
+
+    .plant-node {
+      background: transparent;
+      border: none;
+      border-right: 1px solid rgba(255,255,255,0.5);
+      border-bottom: 1px solid rgba(255,255,255,0.5);
+      padding: clamp(14px, 3vw, 28px) clamp(8px, 2vw, 16px);
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .plant-node:hover {
+      transform: scale(1.08);
+      background: rgba(255,255,255,0.12);
+    }
+    .plant-node:active {
+      transform: scale(0.96);
+      background: rgba(255,255,255,0.18);
+    }
+    .plant-emoji { font-size: 2.4rem; }
+    .plant-node img {
+      width: clamp(48px, 10vw, 80px) !important;
+      height: clamp(48px, 10vw, 80px) !important;
+      object-fit: contain;
+    }
+
+    /* ── DETAIL ── */
+    #screen-detail {
+      background-color: #3a6b2a; /* fallback for bg2.png */
+      background-image: url('bg2.png');
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 16px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .detail-card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: clamp(18px, 4vw, 28px) clamp(18px, 4vw, 32px);
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      position: relative;
+      margin: auto;
+    }
+    .detail-emoji {
+      font-size: 5rem;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .detail-emoji img {
+      width: clamp(60px, 14vw, 80px) !important;
+      height: clamp(60px, 14vw, 80px) !important;
+      object-fit: contain;
+    }
+    .detail-name {
+      font-family: 'Lobster Two', cursive;
+      font-size: clamp(1.5rem, 5vw, 2rem);
+      color: var(--purple-dark);
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .detail-latin {
+      font-size: 0.85rem;
+      color: #888;
+      text-align: center;
+      font-style: italic;
+      margin-bottom: 16px;
+    }
+    .detail-facts {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+    .detail-facts li {
+      display: flex;
+      gap: 10px;
+      font-size: clamp(0.82rem, 2.2vw, 0.92rem);
+      color: var(--text);
+      line-height: 1.4;
+    }
+    .fact-dot {
+      width: 8px;
+      height: 8px;
+      min-width: 8px;
+      border-radius: 50%;
+      background: var(--purple);
+      margin-top: 5px;
+    }
+    .detail-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .tag {
+      background: rgba(155, 107, 200, 0.15);
+      color: var(--purple-dark);
+      border-radius: 50px;
+      padding: 4px 12px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .back-btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      background: var(--purple);
+      color: white;
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .back-btn:hover { background: var(--purple-dark); }
+
+    .bg-deco {
+      position: absolute;
+      font-size: 2rem;
+      opacity: 0.18;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    @media (max-width: 480px) {
+      .bg-deco { display: none; }
+      .title-banner { padding: 12px 28px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SCREEN 1: LANDING -->
+<div id="screen-landing" class="screen visible">
+  <div class="landing-content">
+    <div class="title-banner">
+      <h1>Pick your Plants</h1>
+    </div>
+    <button class="start-btn" onclick="showScreen('picker')">Start</button>
+  </div>
+</div>
+
+<!-- SCREEN 2: PLANT PICKER -->
+<div id="screen-picker" class="screen hidden">
+  <span class="bg-deco" style="top:5%;left:3%">🌿</span>
+  <span class="bg-deco" style="top:8%;right:5%">🪴</span>
+  <span class="bg-deco" style="bottom:8%;left:7%">🌱</span>
+  <span class="bg-deco" style="bottom:5%;right:4%">🍃</span>
+
+  <div style="position:relative;z-index:1;width:100%;max-width:900px;">
+    <div class="picker-header">
+      <button class="picker-back-btn" onclick="showScreen('landing')">← Back</button>
+      <h2 class="picker-title" style="flex:1;text-align:center;">Choose a plant to learn about</h2>
+    </div>
+    <div class="plant-grid" id="plant-grid"></div>
+  </div>
+</div>
+
+<!-- SCREEN 3: PLANT DETAIL -->
+<div id="screen-detail" class="screen hidden">
+  <div class="detail-card" id="detail-card">
+    <div class="detail-emoji" id="d-emoji">🌵</div>
+    <div class="detail-name" id="d-name">Prickly Pear Cactus</div>
+    <div class="detail-latin" id="d-latin">Opuntia</div>
+    <ul class="detail-facts" id="d-facts"></ul>
+    <div class="detail-tags" id="d-tags"></div>
+    <button class="back-btn" onclick="showScreen('picker')">← Back to all plants</button>
+  </div>
+</div>
+
+<script>
+const PLANTS = [
+  {
+    emoji: '<img src="PricklyPearCactus.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "Prickly Pear Cactus",
+    latin: "Opuntia",
+    facts: [
+      "Thrives in full sun and well-draining soil — perfect for bright windowsills.",
+      "Water sparingly; overwatering is the most common mistake with cacti.",
+      "Produces edible fruits called tunas that are sweet and rich in antioxidants.",
+      "Can tolerate temperatures down to -10°C once established outdoors.",
+    ],
+    tags: ["Full sun", "Low water", "Edible", "Pet-safe"]
+  },
+  {
+    emoji: '<img src="zzplant.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "ZZ Plant",
+    latin: "Zamioculcas zamiifolia",
+    facts: [
+      "One of the most drought-tolerant houseplants — forget to water it and it thrives.",
+      "Stores water in its thick rhizomes beneath the soil surface.",
+      "Grows in low light conditions, making it ideal for darker rooms.",
+      "Air-purifying qualities help filter toxins like xylene and toluene.",
+    ],
+    tags: ["Low light", "Low water", "Air purifier", "Beginner-friendly"]
+  },
+  {
+    emoji: '<img src="fiddleleaf.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "Fiddle Leaf Fig",
+    latin: "Ficus lyrata",
+    facts: [
+      "Known for its large, violin-shaped leaves that can grow up to 45cm long.",
+      "Prefers bright indirect light and consistent moisture — avoid moving it.",
+      "Can grow 6 feet or more indoors over several years.",
+      "Wipe leaves gently with a damp cloth to keep them dust-free and glossy.",
+    ],
+    tags: ["Bright indirect light", "Medium water", "Statement plant", "Tropical"]
+  },
+  {
+    emoji: '<img src="boston.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "Boston Fern",
+    latin: "Nephrolepis exaltata",
+    facts: [
+      "Loves high humidity — ideal for bathrooms or kitchens with steam.",
+      "One of the best air-purifying plants, removing formaldehyde and xylene.",
+      "Requires consistent moisture; never let the soil dry out completely.",
+      "Fronds can arch gracefully, making it stunning in hanging baskets.",
+    ],
+    tags: ["High humidity", "Regular water", "Air purifier", "Hanging basket"]
+  },
+  {
+    emoji: '<img src="MonsteraDeliciosa.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "Monstera Deliciosa",
+    latin: "Monstera deliciosa",
+    facts: [
+      "Famous for its natural leaf holes called fenestrations, which help survive tropical storms.",
+      "Grows quickly in bright indirect light and rewards regular feeding.",
+      "Can produce edible fruit indoors, though it takes years to mature.",
+      "Aerial roots can be trained up a moss pole for faster, larger growth.",
+    ],
+    tags: ["Bright indirect light", "Medium water", "Fast grower", "Iconic"]
+  },
+  {
+    emoji: '<img src="rubber.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "Rubber Plant",
+    latin: "Ficus elastica",
+    facts: [
+      "Glossy, deep-green leaves develop a burgundy tint in bright light.",
+      "Highly resilient and forgiving — tolerates some neglect well.",
+      "Produces a milky latex sap; wear gloves when pruning.",
+      "Can become a large tree-like plant indoors given enough space and light.",
+    ],
+    tags: ["Bright light", "Low water", "Bold foliage", "Tall grower"]
+  },
+  {
+    emoji: '<img src="snake.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "Snake Plant",
+    latin: "Sansevieria trifasciata",
+    facts: [
+      "Releases oxygen at night, making it a popular bedroom plant.",
+      "Virtually indestructible — survives low light and months without water.",
+      "Cleans the air of toxins including formaldehyde, benzene, and CO₂.",
+      "Propagates easily by dividing offsets or rooting leaf cuttings in water.",
+    ],
+    tags: ["Any light", "Very low water", "Air purifier", "Bedroom-safe"]
+  },
+  {
+    emoji: '<img src="pilea.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "Peace Lily",
+    latin: "Spathiphyllum",
+    facts: [
+      "One of few flowering plants that thrives in low-light environments.",
+      "Droops dramatically when thirsty — a reliable built-in watering indicator.",
+      "White hood-shaped blooms (spathes) appear in spring and occasionally in autumn.",
+      "Toxic to cats and dogs if ingested, so place out of reach of pets.",
+    ],
+    tags: ["Low light", "Regular water", "Flowering", "Air purifier"]
+  },
+  {
+    emoji: '<img src="Flowering.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "Flowering Cactus",
+    latin: "Various genera",
+    facts: [
+      "Many cacti bloom with spectacular flowers lasting only a day or two.",
+      "Requires a cool, dry rest period in winter to trigger spring flowering.",
+      "Some species flower only at night, releasing a strong, sweet fragrance.",
+      "Grafted cacti often bloom more reliably than species grown from seed.",
+    ],
+    tags: ["Full sun", "Low water", "Blooms", "Desert plant"]
+  },
+  {
+    emoji: '<img src="Caladium.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "Caladium",
+    latin: "Caladium bicolor",
+    facts: [
+      "Grown for its stunning heart-shaped leaves in pink, red, white, and green patterns.",
+      "Goes dormant in winter — tubers can be stored and regrown each spring.",
+      "Prefers warm temperatures above 18°C and indirect bright light.",
+      "Keep soil consistently moist during the growing season for best leaf colour.",
+    ],
+    tags: ["Indirect light", "High water", "Colorful foliage", "Seasonal"]
+  },
+  {
+    emoji: '<img src="hearts.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "Heartleaf Philodendron",
+    latin: "Philodendron hederaceum",
+    facts: [
+      "One of the easiest trailing houseplants — trails beautifully from shelves.",
+      "Adapts well to low light but grows faster in bright indirect light.",
+      "Propagates effortlessly in water from a single stem node cutting.",
+      "Cleans indoor air and is a great starter plant for beginners.",
+    ],
+    tags: ["Low to bright light", "Moderate water", "Trailing", "Easy propagation"]
+  },
+  {
+    emoji: '<img src="aloe.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "Aloe Vera",
+    latin: "Aloe barbadensis",
+    facts: [
+      "The gel inside its fleshy leaves soothes sunburns and minor skin irritations.",
+      "Thrives on neglect — water deeply but infrequently, every 2–3 weeks.",
+      "Grows best in terracotta pots with sandy, well-draining soil.",
+      "Produces offsets (pups) around the base that can be separated and repotted.",
+    ],
+    tags: ["Full sun", "Very low water", "Medicinal", "Succulent"]
+  },
+  {
+    emoji: '<img src="hearts.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "String of Hearts",
+    latin: "Ceropegia woodii",
+    facts: [
+      "Delicate trailing vines with tiny heart-shaped leaves in silver and green.",
+      "Stores water in its leaves and tubers — highly drought tolerant.",
+      "Produces small tubular purple-pink flowers along the vines.",
+      "Grows best in bright light; leaves lose their marbling in low light.",
+    ],
+    tags: ["Bright light", "Low water", "Trailing", "Romantic"]
+  },
+  {
+    emoji: '<img src="haworthia.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "Haworthia",
+    latin: "Haworthia fasciata",
+    facts: [
+      "Small succulent with white zebra-striped leaves — perfect for a desk.",
+      "Tolerates low light better than most succulents, thriving near a window.",
+      "Water once a month in winter and every 2 weeks in summer.",
+      "Stays compact and rarely outgrows its pot — no pruning needed.",
+    ],
+    tags: ["Medium light", "Low water", "Compact", "Desk-friendly"]
+  },
+  {
+    emoji: '<img src="banana.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "Banana Plant",
+    latin: "Musa",
+    facts: [
+      "Creates a bold tropical statement with leaves that can exceed 1 metre indoors.",
+      "Needs plenty of water and high humidity to keep large leaves healthy.",
+      "Grows fast in summer — a well-fed plant can put out a new leaf each week.",
+      "Dwarf varieties like Musa acuminata are best suited to indoor growing.",
+    ],
+    tags: ["Full sun", "High water", "Tropical", "Statement plant"]
+  },
+  {
+    emoji: '<img src="sans.png" style="width:48px;height:48px;object-fit:contain;">',
+    name: "Sansevieria",
+    latin: "Sansevieria cylindrica",
+    facts: [
+      "Cylindrical leaves grow upright like spears in an elegant fan shape.",
+      "Extremely drought-tolerant and thrives in low-light corners.",
+      "Air-purifying and one of the longest-lived houseplants if not overwatered.",
+      "Braided varieties are sometimes trained to grow with plaited stems.",
+    ],
+    tags: ["Any light", "Very low water", "Sculptural", "Long-lasting"]
+  },
+];
+
+// Preload all plant images in the background as soon as the page loads
+window.addEventListener('load', () => {
+  const srcs = [
+    'PricklyPearCactus.png','zzplant.png','fiddleleaf.png','boston.png',
+    'MonsteraDeliciosa.png','rubber.png','snake.png','pilea.png',
+    'Flowering.png','Caladium.png','hearts.png','aloe.png',
+    'haworthia.png','banana.png','sans.png'
+  ];
+  srcs.forEach(src => { const img = new Image(); img.src = src; });
+});
+
+function renderPlantGrid() {
+  const grid = document.getElementById('plant-grid');
+  grid.innerHTML = '';
+  PLANTS.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'plant-node';
+    el.innerHTML = `<div class="plant-emoji" style="line-height:1">${p.emoji}</div>`;
+    el.onclick = () => showDetail(i);
+    grid.appendChild(el);
+  });
+}
+
+function showDetail(i) {
+  const p = PLANTS[i];
+  document.getElementById('d-emoji').innerHTML = p.emoji;
+  document.getElementById('d-name').textContent = p.name;
+  document.getElementById('d-latin').textContent = p.latin;
+
+  const ul = document.getElementById('d-facts');
+  ul.innerHTML = '';
+  p.facts.forEach(f => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="fact-dot"></span><span>${f}</span>`;
+    ul.appendChild(li);
+  });
+
+  const tags = document.getElementById('d-tags');
+  tags.innerHTML = '';
+  p.tags.forEach(t => {
+    const span = document.createElement('span');
+    span.className = 'tag';
+    span.textContent = t;
+    tags.appendChild(span);
+  });
+
+  showScreen('detail');
+}
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('visible');
+    s.classList.add('hidden');
+  });
+  const target = document.getElementById('screen-' + name);
+  target.classList.remove('hidden');
+  target.classList.add('visible');
+  target.scrollTop = 0;
+}
+
+renderPlantGrid();
+</script>
+</body>
+</html>
